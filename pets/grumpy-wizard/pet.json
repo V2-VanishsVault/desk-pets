@@ -1,0 +1,16 @@
+{
+  "name": "Grumpy wizard",
+  "emoji": "🧙",
+  "lines": [
+    "Muttering incantations…",
+    "Consulting the ancient texts…",
+    "Back in my day, code compiled itself…",
+    "Hmph. Conjuring…",
+    "Don't rush the magic…",
+    "Weaving the spell, slowly…",
+    "Fine, FINE, I'm working…",
+    "Bending bits to my will…"
+  ],
+  "helper": "Apprentice",
+  "summon": "Summoning an apprentice:"
+}

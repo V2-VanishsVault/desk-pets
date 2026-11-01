@@ -1,0 +1,22 @@
+{
+  "name": "Fat ninja",
+  "emoji": "🥷",
+  "hands": [
+    { "cx": 52, "cy": 131, "rx": 17, "ry": 14 },
+    { "cx": 143, "cy": 131, "rx": 16, "ry": 14 }
+  ],
+  "lines": [
+    "Frantically working…",
+    "Typing at ninja speed…",
+    "Fingers of fury…",
+    "Silently crushing it…",
+    "Keyboard jutsu in progress…",
+    "Hacking from the shadows…",
+    "One with the keyboard…",
+    "Too fast to see…",
+    "Stealth mode: on…",
+    "Deploying the ancient arts…"
+  ],
+  "helper": "Shadow clone",
+  "summon": "Shadow clone jutsu:"
+}

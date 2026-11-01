@@ -1,0 +1,6 @@
+{
+  "name": "desk-pets",
+  "owner": { "name": "Vanish's Vault" },
+  "description": "Desk pets for Claude Code: an animated pet beside the chat that reacts to what Claude is doing.",
+  "plugins": [{ "name": "desk-pets", "source": "./" }]
+}
