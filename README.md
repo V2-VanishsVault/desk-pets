@@ -44,6 +44,14 @@ In the Claude desktop app, where `/plugin` doesn't run: click + next to the prom
 
 Then type `/pet` to show the pane, and `/pet <id>` (such as `/pet rubber-duck`) to pick a pet. `/pet list` shows them all.
 
+To update to a new release, then restart Claude:
+
+```sh
+claude plugin update desk-pets@vanish-vault
+```
+
+Or turn on auto-update in `/plugin`, under Marketplaces, `vanish-vault`.
+
 ## Commands
 
 - `/pet` shows or hides the pane. Hiding it is remembered across sessions.
