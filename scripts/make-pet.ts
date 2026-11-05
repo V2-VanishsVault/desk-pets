@@ -115,6 +115,14 @@ const keyWhite = (input: string, output: string, size: number) => {
   ])
 }
 
+// ImageMagick arguments that pull a cut-out's outline in by one pixel at its
+// final size. keyWhite erodes at clip size, about a quarter pixel once the
+// frame is shrunk, so the edge pixels still hold the white they were blended
+// with and show as a light halo on a dark pane. Outside the image counts as
+// transparent. (Eroding an extracted copy and putting it back with
+// CopyOpacity breaks after -distort: it comes back all opaque.)
+const TRIM_EDGE = ['-virtual-pixel', 'transparent', '-channel', 'A', '-morphology', 'Erode', 'Square:1', '+channel']
+
 const makeStill = (picture: string, petDir: string) => {
   mkdirSync(petDir, { recursive: true })
   const work = mkdtempSync(join(tmpdir(), 'pet-still-'))
@@ -131,7 +139,9 @@ const makeStill = (picture: string, petDir: string) => {
   run([
     'magick', cut, '-trim', '+repage', '-resize', fit, '-background', 'none',
     '-gravity', 'south', '-extent', `${FRAME_WIDTH}x${FRAME_HEIGHT - STILL_MARGIN}`,
-    '-gravity', 'north', '-extent', `${FRAME_WIDTH}x${FRAME_HEIGHT}`, still,
+    '-gravity', 'north', '-extent', `${FRAME_WIDTH}x${FRAME_HEIGHT}`,
+    // A picture that came with its own transparency has a clean edge already.
+    ...(hasAlpha ? [] : TRIM_EDGE), still,
   ])
   run(['cwebp', '-quiet', '-lossless', still, '-o', join(petDir, 'still.webp')])
   run([
@@ -247,7 +257,7 @@ const makeClip = (petDir: string, clipName: string, clip: string) => {
     run([
       'magick', join(keyed, name), '-background', 'none', '-virtual-pixel', 'transparent',
       '-distort', 'SRT', `${x},${y} ${scale} 0 ${anchor.x},${anchor.y}`,
-      '-crop', crop, '+repage', '-resize', `${FRAME_WIDTH}x${CANVAS_HEIGHT}!`, join(canvas, name),
+      '-crop', crop, '+repage', '-resize', `${FRAME_WIDTH}x${CANVAS_HEIGHT}!`, ...TRIM_EDGE, join(canvas, name),
     ])
   })
 
