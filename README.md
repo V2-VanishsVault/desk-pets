@@ -1,9 +1,10 @@
 # Desk pets
 
-An animated pet in a pane beside the Claude Code chat. It works while Claude works, reacts to what's going on, and calls in a helper for every subagent. It comes with two pets, and you can make your own from any picture.
+An animated pet in a pane beside the Claude Code chat. It works while Claude works, reacts to what's going on, and calls in a helper for every subagent. It comes with three pets, Clawde by default, and you can make your own from any picture.
 
 | Pet | Id | Works by |
 | --- | --- | --- |
+| 🟧 Clawde (default) | `clawde` | standing and getting stuck in |
 | 🥷 V2 Ninja | `v2-ninja` | sitting with his laptop, hands a typing blur |
 | 🧙 Grumpy wizard | `grumpy-wizard` | standing and grudgingly casting spells |
 
@@ -38,7 +39,7 @@ claude plugin install desk-pets --marketplace V2-VanishsVault/desk-pets
 
 In the Claude desktop app, where `/plugin` doesn't run: click + next to the prompt box, then Plugins, Add marketplace with `V2-VanishsVault/desk-pets`, then Add plugin.
 
-Then type `/pet` to show the pane, and `/pet grumpy-wizard` or `/pet v2-ninja` to pick a pet.
+Then type `/pet` to show the pane, and `/pet clawde`, `/pet v2-ninja` or `/pet grumpy-wizard` to pick a pet.
 
 ## Commands
 

@@ -1,8 +1,10 @@
 import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
+import { DEFAULT_PET } from './pets'
 
-// The plugin's pets folder holds the ninja; the person's own holds a robot
-// without reactions or hands. The images stand in for WebP bytes.
+// The plugin's pets folder holds the default pet (a typing ninja here, so the
+// tests cover hands and clips); the person's own holds a robot without
+// reactions or hands. The images stand in for WebP bytes.
 const HOME = '/home/me'
 const MY_PETS = `${HOME}/.claude/pets`
 const NINJA = `{
@@ -10,7 +12,7 @@ const NINJA = `{
   "lines": ["Frantically working…"], "helper": "Shadow clone", "summon": "Shadow clone jutsu:"
 }`
 const FOLDERS: Record<string, Record<string, string>> = {
-  'v2-ninja': {
+  [DEFAULT_PET]: {
     'pet.json': NINJA,
     'still.webp': 'U1RJTEw=',
     'review@2_0_24_192_208.webp': 'UkVWSUVX',
@@ -28,7 +30,7 @@ const fakePets = (on: On) => {
       return { value: [entry('robo', 'dir')] }
     }
     if (e.path.endsWith('/pets')) {
-      return { value: [entry('v2-ninja', 'dir'), entry('.DS_Store', 'file')] }
+      return { value: [entry(DEFAULT_PET, 'dir'), entry('.DS_Store', 'file')] }
     }
     const files = FOLDERS[e.path.split('/').pop() ?? ''] ?? {}
     return { value: Object.keys(files).map(name => entry(name, 'file')) }
@@ -212,7 +214,7 @@ test('the pane opens at session start, /pet toggles it, and /pet <id> switches p
   expect(stored.get('isPaneClosed')).toBe(true)
 
   const listed = await $.command.run(typedPet('list'))
-  expect(listed.text).toContain('▸ 🥷 v2-ninja: V2 Ninja (built in; no jumping, failed)')
+  expect(listed.text).toContain(`▸ 🥷 ${DEFAULT_PET}: V2 Ninja (built in; no jumping, failed)`)
   expect(listed.text).toContain('  🐾 robo: Robo (yours; no review, waving, jumping, failed; no hands or working clip)')
 
   const missing = await $.command.run(typedPet('nobody'))
