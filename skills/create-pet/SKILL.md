@@ -76,7 +76,7 @@ bun "${CLAUDE_PLUGIN_ROOT}/scripts/make-pet.ts" clip ~/.claude/pets/<id> <clip> 
 
 The script does the following:
 
-- Keys out the white.
+- Cuts the pet out. On macOS that's Apple Vision's subject cut-out (`scripts/mask.swift`, which runs with the `swift` that comes with Xcode or its command-line tools), which leaves out gaps and the floor shadow. Elsewhere, or if Vision fails, it keys out the white instead and says so.
 - Cancels the video model's camera drift.
 - Samples 10 frames a second at full size.
 - Cuts the frames into as few pieces as fit the pane's size cap, usually three. The pane plays the pieces in turn.
@@ -84,7 +84,7 @@ The script does the following:
 
 Look at a few frames of the result. Regenerate a clip whose first frame isn't the still (the model ignored the start image), or one that has white specks or cut-off effects.
 
-If the pet has a white marking inside its outline, such as a white logo, belly or patch, and that marking comes out with holes, run the clip again with `--keep-white` at the end. The script then removes only the white reached from the frame's corners and keeps everything inside the outline. A gap the background can't reach, such as between legs held together over a floor shadow, then stays white. If that shows, regenerate the clip with a pose that keeps the legs apart.
+If the pet has a white marking inside its outline, such as a white logo, belly or patch, and that marking comes out with holes, run the clip again with `--keep-white` at the end. The script then keeps all the white inside the pet's outline. Without it, the script clears white that the background can't reach outside the pet's body, such as a gap between a hand and a sword. So with `--keep-white`, check the frames for a gap that kept some white, and regenerate that clip with a pose that keeps the limbs apart if one shows.
 
 ## 6. Show it
 

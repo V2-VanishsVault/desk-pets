@@ -82,7 +82,7 @@ bun scripts/make-pet.ts still <picture> <pet folder>
 bun scripts/make-pet.ts clip <pet folder> <clip> <clip.mp4>
 ```
 
-Add `--keep-white` for a pet with white markings inside its outline (Clawde's starburst), so the keying doesn't punch holes in them.
+On macOS the script cuts the pet out with Apple Vision (`scripts/mask.swift`, run with Xcode's `swift`), which leaves out gaps and floor shadows. Elsewhere it keys out the white background. Add `--keep-white` for a pet with white markings inside its outline (Clawde's starburst), so the cleanup of white gaps leaves them alone.
 
 A typing pet lists `hands` in `pet.json`. These are soft ellipses around each hand in still-frame pixels, and the pane taps them in turn while Claude works. A pet without hands plays its `working` clip instead.
 
