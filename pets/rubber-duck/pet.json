@@ -1,0 +1,16 @@
+{
+  "name": "Rubber duck",
+  "emoji": "🦆",
+  "lines": [
+    "Talking it through…",
+    "Explain it to me slowly…",
+    "Listening intently…",
+    "Quack-checking the logic…",
+    "Rubber-ducking the bug…",
+    "Floating an idea…",
+    "Just keep paddling…",
+    "Squeaky clean code…"
+  ],
+  "helper": "Duckling",
+  "summon": "Calling in a duckling:"
+}

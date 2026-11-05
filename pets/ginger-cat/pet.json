@@ -1,0 +1,20 @@
+{
+  "name": "Ginger cat",
+  "emoji": "🐈",
+  "hands": [
+    { "cx": 61, "cy": 145, "rx": 11, "ry": 9 },
+    { "cx": 139, "cy": 145, "rx": 11, "ry": 9 }
+  ],
+  "lines": [
+    "Typing with my paws…",
+    "Chasing the cursor…",
+    "Purring through the logs…",
+    "Knocking bugs off the desk…",
+    "Nine lives, zero bugs…",
+    "Pawing at the keyboard…",
+    "Curiosity at work…",
+    "Napping later, coding now…"
+  ],
+  "helper": "Kitten",
+  "summon": "Sending a kitten:"
+}
