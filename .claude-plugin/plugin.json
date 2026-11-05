@@ -1,6 +1,6 @@
 {
   "name": "desk-pets",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "An animated pet in a pane beside the chat: it works while Claude works, reacts to searches, questions, wins and errors, and summons a helper for each subagent. Comes with two pets; make your own from any picture with /desk-pets:create-pet.",
   "author": { "name": "Vanish's Vault" },
   "homepage": "https://github.com/V2-VanishsVault/desk-pets",
