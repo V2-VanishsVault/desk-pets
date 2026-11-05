@@ -42,16 +42,33 @@ const STILL_MARGIN = 4
 // bigger than HOLE_AREA at HOLE_SIZE do too. Video compression greys white
 // a little, and at 97% a narrow gap (staff and robe) breaks into specks too
 // small to count, so HOLE_WHITE sits at 93% and HOLE_AREA at 120. Eyes and
-// highlights stay, as they aren't that white.
+// highlights stay, as they aren't that white. A pet with a white marking
+// that white passes KEEP_WHITE and keeps everything inside its outline:
+// Clawde's starburst reaches 93-97% in a clip, as white as a gap between
+// its legs, so no lightness or size tells the two apart.
 const FLOOD_FUZZ = '8%'
 const HOLE_WHITE = '93%'
 const HOLE_AREA = 120
 const HOLE_SIZE = 640
-// Drift: the figure's bottom band, from FEET_BAND of its height above its
-// bottom to FEET_BELOW of the clip below it, smoothed over DRIFT_WINDOW frames.
-const FEET_BAND = 0.25
+const KEEP_WHITE = '--keep-white'
+// Drift: the figure's bottom band, from a share of its height above its
+// bottom to FEET_BELOW of the clip below it. Its place is smoothed over
+// DRIFT_WINDOW frames either side and its width, which sets the zoom, over
+// ZOOM_WINDOW, as a camera's zoom drifts slowly and anything else in the
+// band (a hand that hangs low) comes and goes. The zoom stays within
+// MAX_ZOOM either way. The share is whichever of FEET_BANDS keeps its width
+// within WIDTH_TOLERANCE of the usual in the most frames: a quarter takes in
+// hands that hang low (Clawde), which leave the band as they rise; a tenth
+// takes in only a seated pet's folded legs (the ninja), which move. A frame
+// with nothing in the band (mid-hop) keeps the frame before's feet.
+const QUARTER = 0.25
+const TENTH = 0.1
+const FEET_BANDS = [QUARTER, TENTH]
 const FEET_BELOW = 0.08
 const DRIFT_WINDOW = 15
+const ZOOM_WINDOW = 30
+const MAX_ZOOM = 1.1
+const WIDTH_TOLERANCE = 0.1
 
 // Packing: CLIP_FPS frames a second (hooks/pets.ts plays them at that rate),
 // full size, at QUALITY, in as few pieces as fit, up to MAX_PIECES.
@@ -82,34 +99,41 @@ const run = (argv: string[]): string => {
 }
 
 // ImageMagick's "%@" bounding box, "WxH+X+Y".
-// Matches "148x198+22+5"; rejects "0x0" (nothing there) and "148x198".
+// Matches "148x198+22+5"; rejects "0x0" and "148x198". An empty crop gives
+// "0x0+5+5", which matches, so a box with no width or height counts as
+// nothing there too.
 // https://regex101.com/?regex=%5E(%5Cd%2B)x(%5Cd%2B)%2B(-%3F%5Cd%2B)%2B(-%3F%5Cd%2B)%24&testString=148x198%2B22%2B5
 const GEOMETRY = /^(\d+)x(\d+)\+(-?\d+)\+(-?\d+)$/
 
 const boundsOf = (file: string, crop = ''): Rect | undefined => {
   const args = crop === '' ? [] : ['-crop', crop, '+repage']
   const match = GEOMETRY.exec(run(['magick', file, '-alpha', 'extract', ...args, '-threshold', '50%', '-format', '%@', 'info:']))
-  if (match === null) {
-    return undefined
-  }
-  const [w, h, x, y] = match.slice(1).map(Number)
-  return { w: w ?? 0, h: h ?? 0, x: x ?? 0, y: y ?? 0 }
+  const [w = 0, h = 0, x = 0, y = 0] = match === null ? [] : match.slice(1).map(Number)
+  return w === 0 || h === 0 ? undefined : { w, h, x, y }
 }
 
 // Background to transparent: the white reached by flooding in from the four
 // corners, plus any pure-white gap inside the outline larger than a hole of
 // HOLE_AREA (between an arm and the body). Light fur and small white details
-// such as eyes stay.
-const keyWhite = (input: string, output: string, size: number) => {
+// such as eyes stay. With keepWhite the holes mask is all white, so nothing
+// inside the outline goes. The flood paints the background transparent and
+// its alpha is the mask: painting it black instead would also count every
+// pure-black pixel of the pet (the ninja's hood) as background.
+const keyWhite = (input: string, output: string, size: number, keepWhite: boolean) => {
   const area = String(Math.round(HOLE_AREA * (size / HOLE_SIZE) ** SQUARED))
   const far = size - 1
   const floods = [`0,0`, `${far},0`, `0,${far}`, `${far},${far}`].flatMap(corner => ['-draw', `color ${corner} floodfill`])
+  const holes = keepWhite
+    ? ['(', '-clone', '0', '-fill', 'white', '-colorize', String(PERCENT), '-colorspace', 'gray', ')']
+    : [
+        '(', '-clone', '0', '-colorspace', 'gray', '-threshold', HOLE_WHITE,
+        '-define', `connected-components:area-threshold=${area}`, '-define', 'connected-components:mean-color=true',
+        '-connected-components', '8', '-negate', ')',
+      ]
   run([
     'magick', input, '-alpha', 'off',
-    '(', '+clone', '-fuzz', FLOOD_FUZZ, '-fill', 'black', ...floods, '-fuzz', '0', '-fill', 'white', '+opaque', 'black', '-colorspace', 'gray', ')',
-    '(', '-clone', '0', '-colorspace', 'gray', '-threshold', HOLE_WHITE,
-    '-define', `connected-components:area-threshold=${area}`, '-define', 'connected-components:mean-color=true',
-    '-connected-components', '8', '-negate', ')',
+    '(', '+clone', '-alpha', 'set', '-fuzz', FLOOD_FUZZ, '-fill', 'none', ...floods, '-fuzz', '0', '-alpha', 'extract', ')',
+    ...holes,
     '(', '-clone', '1,2', '-compose', 'multiply', '-composite', '-morphology', 'Erode', 'Disk:1', '-blur', '0x0.7', ')',
     '-delete', '1,2', '-alpha', 'off', '-compose', 'CopyOpacity', '-composite', output,
   ])
@@ -123,7 +147,7 @@ const keyWhite = (input: string, output: string, size: number) => {
 // CopyOpacity breaks after -distort: it comes back all opaque.)
 const TRIM_EDGE = ['-virtual-pixel', 'transparent', '-channel', 'A', '-morphology', 'Erode', 'Square:1', '+channel']
 
-const makeStill = (picture: string, petDir: string) => {
+const makeStill = (picture: string, petDir: string, keepWhite: boolean) => {
   mkdirSync(petDir, { recursive: true })
   const work = mkdtempSync(join(tmpdir(), 'pet-still-'))
   const cut = join(work, 'cut.png')
@@ -131,7 +155,7 @@ const makeStill = (picture: string, petDir: string) => {
   if (hasAlpha) {
     run(['magick', picture, cut])
   } else {
-    keyWhite(picture, cut, Number(run(['magick', picture, '-format', '%w', 'info:'])))
+    keyWhite(picture, cut, Number(run(['magick', picture, '-format', '%w', 'info:'])), keepWhite)
   }
   // Trimmed, fitted inside the margin, standing on the frame's bottom, centred.
   const fit = `${FRAME_WIDTH - BOTH_SIDES * STILL_MARGIN}x${FRAME_HEIGHT - BOTH_SIDES * STILL_MARGIN}`
@@ -162,10 +186,11 @@ const median = (values: number[]): number => {
 // Each frame's feet box, smoothed: follows slow drift but not a quick hop.
 const smoothFeet = (feet: Rect[]): Rect[] =>
   feet.map((_, index) => {
-    const around = feet.slice(Math.max(0, index - DRIFT_WINDOW), index + DRIFT_WINDOW + 1)
+    const near = (window: number) => feet.slice(Math.max(0, index - window), index + window + 1)
+    const around = near(DRIFT_WINDOW)
     return {
       x: median(around.map(rect => rect.x)),
-      w: median(around.map(rect => rect.w)),
+      w: median(near(ZOOM_WINDOW).map(rect => rect.w)),
       y: median(around.map(rect => rect.y + rect.h)),
       h: 0,
     }
@@ -216,7 +241,7 @@ const pack = (frames: string[], petDir: string, clip: string, work: string): str
   return pieces.map(piece => piece.name)
 }
 
-const makeClip = (petDir: string, clipName: string, clip: string) => {
+const makeClip = (petDir: string, clipName: string, clip: string, keepWhite: boolean) => {
   if (!CLIPS.includes(clipName)) {
     throw new Error(`the clip is one of ${CLIPS.join(', ')}, not "${clipName}"`)
   }
@@ -231,7 +256,7 @@ const makeClip = (petDir: string, clipName: string, clip: string) => {
   const rate = run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate', '-of', 'csv=p=0', clip])
   const [num = 1, den = 1] = rate.split('/').map(Number)
   const names = readdirSync(full).filter(file => file.endsWith('.png')).sort()
-  names.map(name => keyWhite(join(full, name), join(keyed, name), size))
+  names.map(name => keyWhite(join(full, name), join(keyed, name), size, keepWhite))
 
   // The feet band comes from the first frame, where the pet is in its still pose.
   const first = boundsOf(join(keyed, names[0] ?? ''))
@@ -239,13 +264,29 @@ const makeClip = (petDir: string, clipName: string, clip: string) => {
     throw new Error(`${basename(clip)}: no figure found on a white background`)
   }
   const bottom = first.y + first.h
-  const top = Math.round(bottom - first.h * FEET_BAND)
-  const bandHeight = Math.min(size, Math.round(bottom + size * FEET_BELOW)) - top
-  const feet = names.map(name => {
-    const rect = boundsOf(join(keyed, name), `${size}x${bandHeight}+0+${top}`) ?? { w: first.w, h: 0, x: first.x, y: bottom - top }
-    return { ...rect, y: rect.y + top }
-  })
-  const smooth = smoothFeet(feet)
+  const feetIn = (band: number): Rect[] => {
+    const top = Math.round(bottom - first.h * band)
+    const bandHeight = Math.min(size, Math.round(bottom + size * FEET_BELOW)) - top
+    const ground: Rect = { w: first.w, h: 0, x: first.x, y: bottom }
+    return names.reduce<Rect[]>((found, name) => {
+      const seen = boundsOf(join(keyed, name), `${size}x${bandHeight}+0+${top}`)
+      return [...found, seen === undefined ? (found.at(-1) ?? ground) : { ...seen, y: seen.y + top }]
+    }, [])
+  }
+  // The share of frames whose band width strays from its usual width.
+  const spread = (feet: Rect[]): number => {
+    const widths = feet.map(rect => rect.w)
+    const usual = median(widths)
+    return widths.filter(width => Math.abs(width - usual) > usual * WIDTH_TOLERANCE).length / Math.max(1, widths.length)
+  }
+  const [steadiest] = FEET_BANDS.map(band => ({ band, feet: feetIn(band) }))
+    .map(tried => ({ ...tried, spread: spread(tried.feet) }))
+    .sort((a, b) => a.spread - b.spread)
+  if (steadiest === undefined) {
+    throw new Error('no feet band to try')
+  }
+  console.log(`${reaction}: feet band ${steadiest.band} of the height (${(steadiest.spread * PERCENT).toFixed(0)}% of frames stray)`)
+  const smooth = smoothFeet(steadiest.feet)
   const anchor = smooth[0] ?? { x: 0, y: 0, w: 1, h: 0 }
 
   // Map each frame's feet onto the first frame's, then crop the canvas out.
@@ -253,7 +294,7 @@ const makeClip = (petDir: string, clipName: string, clip: string) => {
   const crop = `${Math.round(FRAME_WIDTH * START_SCALE * k)}x${Math.round(CANVAS_HEIGHT * START_SCALE * k)}+${Math.round(START_LEFT * k)}+${Math.round((START_TOP - STILL_TOP * START_SCALE) * k)}`
   names.map((name, index) => {
     const { x, y, w } = smooth[index] ?? anchor
-    const scale = (anchor.w / w).toFixed(SCALE_DIGITS)
+    const scale = Math.min(MAX_ZOOM, Math.max(1 / MAX_ZOOM, anchor.w / w)).toFixed(SCALE_DIGITS)
     run([
       'magick', join(keyed, name), '-background', 'none', '-virtual-pixel', 'transparent',
       '-distort', 'SRT', `${x},${y} ${scale} 0 ${anchor.x},${anchor.y}`,
@@ -271,14 +312,19 @@ const makeClip = (petDir: string, clipName: string, clip: string) => {
   pieces.map(name => console.log(`${petDir}/${name}`))
 }
 
-const [command, ...args] = process.argv.slice(ARGS_START)
-const usage =
-  'usage:\n  bun make-pet.ts still <picture> <pet folder>\n  bun make-pet.ts clip <pet folder> <review|waving|jumping|failed> <clip.mp4>'
+const [command, ...given] = process.argv.slice(ARGS_START)
+const keepWhite = given.includes(KEEP_WHITE)
+const args = given.filter(arg => arg !== KEEP_WHITE)
+const usage = [
+  'usage:',
+  `  bun make-pet.ts still <picture> <pet folder> [${KEEP_WHITE}]`,
+  `  bun make-pet.ts clip <pet folder> <${CLIPS.join('|')}> <clip.mp4> [${KEEP_WHITE}]`,
+].join('\n')
 const [first = '', second = '', third = ''] = args
 if (command === 'still' && args.length === STILL_ARGS && existsSync(first)) {
-  makeStill(first, second)
+  makeStill(first, second, keepWhite)
 } else if (command === 'clip' && args.length === CLIP_ARGS && existsSync(third)) {
-  makeClip(first, second, third)
+  makeClip(first, second, third, keepWhite)
 } else {
   writeFileSync('/dev/stderr', `${usage}\n`)
   process.exit(1)

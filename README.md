@@ -81,6 +81,8 @@ bun scripts/make-pet.ts still <picture> <pet folder>
 bun scripts/make-pet.ts clip <pet folder> <clip> <clip.mp4>
 ```
 
+Add `--keep-white` for a pet with white markings inside its outline (Clawde's starburst), so the keying doesn't punch holes in them.
+
 A typing pet lists `hands` in `pet.json`. These are soft ellipses around each hand in still-frame pixels, and the pane taps them in turn while Claude works. A pet without hands plays its `working` clip instead.
 
 ## Developing
