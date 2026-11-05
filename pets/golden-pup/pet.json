@@ -1,0 +1,16 @@
+{
+  "name": "Golden pup",
+  "emoji": "🐕",
+  "lines": [
+    "Fetching the files…",
+    "Sniffing out the bug…",
+    "Digging into it…",
+    "On the scent…",
+    "Chasing that bug…",
+    "Tail wagging, code compiling…",
+    "Good pup, working hard…",
+    "Who's a good build?…"
+  ],
+  "helper": "Puppy",
+  "summon": "Sending a puppy to fetch:"
+}

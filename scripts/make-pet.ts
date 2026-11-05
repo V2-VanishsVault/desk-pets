@@ -10,11 +10,12 @@
 //
 //   bun make-pet.ts clip <pet folder> <review|waving|jumping|failed|working> <clip.mp4>
 //     Turns a square clip made from start-end.png (white background, static
-//     camera) into that clip's pieces. It keys out the white, cancels the
+//     camera) into that clip's pieces. It cuts the pet out (Apple Vision on
+//     macOS, by mask.swift; elsewhere by keying out the white), cancels the
 //     model's slow camera drift by pinning the bottom of the figure (a real
 //     hop stays in), samples CLIP_FPS frames a second at full size and cuts
 //     them into as few pieces as fit the pane's size cap, which the pane
-//     plays in turn.
+//     plays in turn. --keep-white only matters when keying the white.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
@@ -43,13 +44,19 @@ const STILL_MARGIN = 4
 // a little, and at 97% a narrow gap (staff and robe) breaks into specks too
 // small to count, so HOLE_WHITE sits at 93% and HOLE_AREA at 120. Eyes and
 // highlights stay, as they aren't that white. A pet with a white marking
-// that white passes KEEP_WHITE and keeps everything inside its outline:
-// Clawde's starburst reaches 93-97% in a clip, as white as a gap between
-// its legs, so no lightness or size tells the two apart.
+// that white passes KEEP_WHITE: Clawde's starburst reaches 93-97% in a
+// clip, as white as a gap between its arm and its body, so no lightness or
+// size tells the two apart, but where they are does. A marking sits inside
+// the body and a gap outside it, so with KEEP_WHITE a hole inside the body
+// stays. The body is the pet's non-white part opened by a disk of
+// BODY_RADIUS at HOLE_SIZE, which drops the thin arms, legs and swords and
+// keeps the trunk (Clawde's cube, the ninja's torso and laptop), with its
+// own holes filled, which keeps what's inside it.
 const FLOOD_FUZZ = '8%'
 const HOLE_WHITE = '93%'
 const HOLE_AREA = 120
 const HOLE_SIZE = 640
+const BODY_RADIUS = 12
 const KEEP_WHITE = '--keep-white'
 // Drift: the figure's bottom band, from a share of its height above its
 // bottom to FEET_BELOW of the clip below it. Its place is smoothed over
@@ -115,28 +122,110 @@ const boundsOf = (file: string, crop = ''): Rect | undefined => {
 // Background to transparent: the white reached by flooding in from the four
 // corners, plus any pure-white gap inside the outline larger than a hole of
 // HOLE_AREA (between an arm and the body). Light fur and small white details
-// such as eyes stay. With keepWhite the holes mask is all white, so nothing
-// inside the outline goes. The flood paints the background transparent and
-// its alpha is the mask: painting it black instead would also count every
-// pure-black pixel of the pet (the ninja's hood) as background.
+// such as eyes stay. With keepWhite a hole inside the body (see KEEP_WHITE)
+// stays. The flood paints the background transparent and its alpha is the
+// mask: painting it black instead would also count every pure-black pixel
+// of the pet (the ninja's hood) as background.
+//
+// The images, by index: 0 the frame, 1 the flood's mask (white is the pet),
+// 2 the holes (black is a hole); with keepWhite, 3 the opened body and 4
+// the holes in it, lightened onto 2 so a hole inside the body stays.
 const keyWhite = (input: string, output: string, size: number, keepWhite: boolean) => {
   const area = String(Math.round(HOLE_AREA * (size / HOLE_SIZE) ** SQUARED))
+  const radius = Math.max(1, Math.round(BODY_RADIUS * (size / HOLE_SIZE)))
   const far = size - 1
   const floods = [`0,0`, `${far},0`, `0,${far}`, `${far},${far}`].flatMap(corner => ['-draw', `color ${corner} floodfill`])
-  const holes = keepWhite
-    ? ['(', '-clone', '0', '-fill', 'white', '-colorize', String(PERCENT), '-colorspace', 'gray', ')']
-    : [
-        '(', '-clone', '0', '-colorspace', 'gray', '-threshold', HOLE_WHITE,
-        '-define', `connected-components:area-threshold=${area}`, '-define', 'connected-components:mean-color=true',
-        '-connected-components', '8', '-negate', ')',
+  const holes = [
+    '(', '-clone', '0', '-colorspace', 'gray', '-threshold', HOLE_WHITE,
+    '-define', `connected-components:area-threshold=${area}`, '-define', 'connected-components:mean-color=true',
+    '-connected-components', '8', '-negate', ')',
+  ]
+  const body = keepWhite
+    ? [
+        '(', '-clone', '0', '-colorspace', 'gray', '-threshold', HOLE_WHITE, '-negate', '-clone', '1',
+        '-compose', 'multiply', '-composite', '-morphology', 'Open', `Disk:${radius}`, ')',
+        '(', '-clone', '3', '-negate', '-bordercolor', 'white', '-border', '1',
+        '-fill', 'black', '-draw', 'color 0,0 floodfill', '-shave', '1x1', ')',
+        '(', '-clone', '2-4', '-background', 'black', '-compose', 'lighten', '-flatten', ')',
+        '-delete', '2-4',
       ]
+    : []
   run([
     'magick', input, '-alpha', 'off',
     '(', '+clone', '-alpha', 'set', '-fuzz', FLOOD_FUZZ, '-fill', 'none', ...floods, '-fuzz', '0', '-alpha', 'extract', ')',
     ...holes,
+    ...body,
     '(', '-clone', '1,2', '-compose', 'multiply', '-composite', '-morphology', 'Erode', 'Disk:1', '-blur', '0x0.7', ')',
     '-delete', '1,2', '-alpha', 'off', '-compose', 'CopyOpacity', '-composite', output,
   ])
+}
+
+// Apple Vision's cut-out (mask.swift, macOS): a mask in `masks` for every
+// PNG in `frames`. It tells a white marking from a gap and leaves out the
+// floor shadow, which keying the white can't. False, with the reason, where
+// it can't run (another system, no Swift, no Neural Engine), so the caller
+// keys the white instead; PET_KEY=white asks for that.
+const MASKER = join(import.meta.dir, 'mask.swift')
+const visionMasks = (frames: string, masks: string): boolean => {
+  if (process.platform !== 'darwin' || process.env.PET_KEY === 'white') {
+    return false
+  }
+  try {
+    const done = Bun.spawnSync(['swift', MASKER, frames, masks], { stderr: 'pipe' })
+    if (done.exitCode === 0) {
+      return true
+    }
+    console.log(`Vision couldn't cut the pet out (${done.stderr.toString().trim().split('\n').at(-1) ?? ''}); keying the white instead`)
+  } catch (error) {
+    console.log(`Vision couldn't cut the pet out (${String(error)}); keying the white instead`)
+  }
+  return false
+}
+
+// `frame` with `mask` as its alpha, less any white gap Vision kept: white
+// (HOLE_WHITE) the background can't reach that's outside the body (see
+// KEEP_WHITE), as between the ninja's thumb and his sword. White inside the
+// body (a starburst, a beard) and white at the edge (a glowing staff tip)
+// stay. With keepWhite (a pet with a white marking, such as Clawde's
+// starburst, which can come too close to its edge for the body to hold it)
+// Vision's mask is used as it is. One magick call a step, through files in
+// `scratch`: the same steps as one command, with groups and clones, came
+// out wrong.
+const applyMask = (frame: string, mask: string, output: string, size: number, scratch: string, keepWhite: boolean) => {
+  if (keepWhite) {
+    run(['magick', frame, '-alpha', 'off', mask, '-compose', 'CopyOpacity', '-composite', output])
+    return
+  }
+  const radius = Math.max(1, Math.round(BODY_RADIUS * (size / HOLE_SIZE)))
+  const area = String(Math.round(HOLE_AREA * (size / HOLE_SIZE) ** SQUARED))
+  const far = size - 1
+  const corners = [`0,0`, `${far},0`, `0,${far}`, `${far},${far}`].flatMap(corner => ['-draw', `color ${corner} floodfill`])
+  const file = (name: string) => join(scratch, `${name}.png`)
+  mkdirSync(scratch, { recursive: true })
+  run(['magick', mask, '-colorspace', 'gray', '-threshold', '50%', file('opaque')])
+  run(['magick', frame, '-alpha', 'off', '-colorspace', 'gray', '-threshold', HOLE_WHITE, file('white')])
+  run(['magick', file('opaque'), file('white'), '-compose', 'multiply', '-composite', file('opaque-white')])
+  // The opaque white the background can't reach, flooding through the
+  // transparent and the white from the corners.
+  run([
+    'magick', file('opaque'), '-negate', file('opaque-white'), '-compose', 'lighten', '-composite',
+    '-fill', 'black', ...corners, file('opaque-white'), '-compose', 'multiply', '-composite', file('enclosed'),
+  ])
+  // Everything but the body: the non-white part opened, with its holes filled.
+  run(['magick', file('white'), '-negate', file('opaque'), '-compose', 'multiply', '-composite', '-morphology', 'Open', `Disk:${radius}`, file('opened')])
+  run([
+    'magick', file('opened'), '-negate', '-bordercolor', 'white', '-border', '1', '-fill', 'black', '-draw', 'color 0,0 floodfill', '-shave', '1x1',
+    file('opened'), '-compose', 'lighten', '-composite', '-negate', file('not-body'),
+  ])
+  // What stays: all but enclosed white outside the body, in patches bigger
+  // than a hole.
+  run([
+    'magick', file('enclosed'), file('not-body'), '-compose', 'multiply', '-composite',
+    '-define', `connected-components:area-threshold=${area}`, '-define', 'connected-components:mean-color=true',
+    '-connected-components', '8', '-negate', file('stays'),
+  ])
+  run(['magick', mask, '-colorspace', 'gray', file('stays'), '-compose', 'multiply', '-composite', file('alpha')])
+  run(['magick', frame, '-alpha', 'off', file('alpha'), '-compose', 'CopyOpacity', '-composite', output])
 }
 
 // ImageMagick arguments that pull a cut-out's outline in by one pixel at its
@@ -155,7 +244,16 @@ const makeStill = (picture: string, petDir: string, keepWhite: boolean) => {
   if (hasAlpha) {
     run(['magick', picture, cut])
   } else {
-    keyWhite(picture, cut, Number(run(['magick', picture, '-format', '%w', 'info:'])), keepWhite)
+    const frames = join(work, 'frames')
+    const masks = join(work, 'masks')
+    mkdirSync(frames)
+    const flat = join(frames, 'picture.png')
+    run(['magick', picture, '-alpha', 'off', flat])
+    if (visionMasks(frames, masks)) {
+      applyMask(flat, join(masks, 'picture.png'), cut, Number(run(['magick', flat, '-format', '%w', 'info:'])), join(work, 'scratch'), keepWhite)
+    } else {
+      keyWhite(picture, cut, Number(run(['magick', picture, '-format', '%w', 'info:'])), keepWhite)
+    }
   }
   // Trimmed, fitted inside the margin, standing on the frame's bottom, centred.
   const fit = `${FRAME_WIDTH - BOTH_SIDES * STILL_MARGIN}x${FRAME_HEIGHT - BOTH_SIDES * STILL_MARGIN}`
@@ -256,7 +354,14 @@ const makeClip = (petDir: string, clipName: string, clip: string, keepWhite: boo
   const rate = run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate', '-of', 'csv=p=0', clip])
   const [num = 1, den = 1] = rate.split('/').map(Number)
   const names = readdirSync(full).filter(file => file.endsWith('.png')).sort()
-  names.map(name => keyWhite(join(full, name), join(keyed, name), size, keepWhite))
+  const masks = join(work, 'masks')
+  const byVision = visionMasks(full, masks)
+  console.log(`${reaction}: cut out by ${byVision ? 'Apple Vision' : 'keying the white'}`)
+  names.map(name =>
+    byVision
+      ? applyMask(join(full, name), join(masks, name), join(keyed, name), size, join(work, 'scratch'), keepWhite)
+      : keyWhite(join(full, name), join(keyed, name), size, keepWhite),
+  )
 
   // The feet band comes from the first frame, where the pet is in its still pose.
   const first = boundsOf(join(keyed, names[0] ?? ''))

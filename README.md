@@ -1,12 +1,15 @@
 # Desk pets
 
-An animated pet in a pane beside the Claude Code chat. It works while Claude works, reacts to what's going on, and calls in a helper for every subagent. It comes with three pets, Clawde by default, and you can make your own from any picture.
+An animated pet in a pane beside the Claude Code chat. It works while Claude works, reacts to what's going on, and calls in a helper for every subagent. It comes with six pets, Clawde by default, and you can make your own from any picture.
 
 | Pet | Id | Works by |
 | --- | --- | --- |
 | 🟧 Clawde (default) | `clawde` | standing and getting stuck in |
 | 🥷 V2 Ninja | `v2-ninja` | sitting with his laptop, hands a typing blur |
 | 🧙 Grumpy wizard | `grumpy-wizard` | standing and grudgingly casting spells |
+| 🦆 Rubber duck | `rubber-duck` | listening while you talk it through, bobbing as it thinks |
+| 🐈 Ginger cat | `ginger-cat` | sitting with its laptop, paws on the keys |
+| 🐕 Golden pup | `golden-pup` | standing on its hind legs, tail wagging |
 
 On the desktop app, VS Code and mobile the pet is animated. The terminal shows a one-line status instead.
 
@@ -39,7 +42,7 @@ claude plugin install desk-pets --marketplace V2-VanishsVault/desk-pets
 
 In the Claude desktop app, where `/plugin` doesn't run: click + next to the prompt box, then Plugins, Add marketplace with `V2-VanishsVault/desk-pets`, then Add plugin.
 
-Then type `/pet` to show the pane, and `/pet clawde`, `/pet v2-ninja` or `/pet grumpy-wizard` to pick a pet.
+Then type `/pet` to show the pane, and `/pet <id>` (such as `/pet rubber-duck`) to pick a pet. `/pet list` shows them all.
 
 ## Commands
 
@@ -82,7 +85,7 @@ bun scripts/make-pet.ts still <picture> <pet folder>
 bun scripts/make-pet.ts clip <pet folder> <clip> <clip.mp4>
 ```
 
-Add `--keep-white` for a pet with white markings inside its outline (Clawde's starburst), so the keying doesn't punch holes in them.
+On macOS the script cuts the pet out with Apple Vision (`scripts/mask.swift`, run with Xcode's `swift`), which leaves out gaps and floor shadows. Elsewhere it keys out the white background. Add `--keep-white` for a pet with white markings inside its outline (Clawde's starburst), so the cleanup of white gaps leaves them alone.
 
 A typing pet lists `hands` in `pet.json`. These are soft ellipses around each hand in still-frame pixels, and the pane taps them in turn while Claude works. A pet without hands plays its `working` clip instead.
 
