@@ -84,6 +84,8 @@ The script does the following:
 
 Look at a few frames of the result. Regenerate a clip whose first frame isn't the still (the model ignored the start image), or one that has white specks or cut-off effects.
 
+If the pet has a white marking inside its outline, such as a white logo, belly or patch, and that marking comes out with holes, run the clip again with `--keep-white` at the end. The script then removes only the white reached from the frame's corners and keeps everything inside the outline. A gap the background can't reach, such as between legs held together over a floor shadow, then stays white. If that shows, regenerate the clip with a pose that keeps the legs apart.
+
 ## 6. Show it
 
 Tell the person to type `/pet <id>`. The pane picks up the pet at once, and `/pet <id>` again reloads it after a change. Offer to tweak the lines or any one clip.

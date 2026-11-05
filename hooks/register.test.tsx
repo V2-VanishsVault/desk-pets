@@ -6,11 +6,11 @@ import { expect, mock, test } from 'claude-code/testing'
 const HOME = '/home/me'
 const MY_PETS = `${HOME}/.claude/pets`
 const NINJA = `{
-  "name": "Fat ninja", "emoji": "🥷", "hands": [{ "cx": 52, "cy": 131, "rx": 17, "ry": 14 }],
+  "name": "V2 Ninja", "emoji": "🥷", "hands": [{ "cx": 52, "cy": 131, "rx": 17, "ry": 14 }],
   "lines": ["Frantically working…"], "helper": "Shadow clone", "summon": "Shadow clone jutsu:"
 }`
 const FOLDERS: Record<string, Record<string, string>> = {
-  'fat-ninja': {
+  'v2-ninja': {
     'pet.json': NINJA,
     'still.webp': 'U1RJTEw=',
     'review@2_0_24_192_208.webp': 'UkVWSUVX',
@@ -28,7 +28,7 @@ const fakePets = (on: On) => {
       return { value: [entry('robo', 'dir')] }
     }
     if (e.path.endsWith('/pets')) {
-      return { value: [entry('fat-ninja', 'dir'), entry('.DS_Store', 'file')] }
+      return { value: [entry('v2-ninja', 'dir'), entry('.DS_Store', 'file')] }
     }
     const files = FOLDERS[e.path.split('/').pop() ?? ''] ?? {}
     return { value: Object.keys(files).map(name => entry(name, 'file')) }
@@ -146,7 +146,7 @@ test('a finished turn cheers on every surface, then settles back to idle', async
 
   await clock.advance(SETTLED_MS)
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect((await ui.find({ type: 'Svg' }))?.props.alt).toBe('Fat ninja')
+  expect((await ui.find({ type: 'Svg' }))?.props.alt).toBe('V2 Ninja')
   await ui.unmount()
 })
 
@@ -168,7 +168,7 @@ test("a subagent gets a helper named for the pet, which leaves when its run ends
   })
   const during = await $.ui.mount({ ...PANE, surface: 'desktop' })
   const drawn = await during.findAll({ type: 'Svg' })
-  expect(drawn.map(svg => svg.props.alt)).toEqual(['Fat ninja', 'Shadow clone: Review open pull requ…'])
+  expect(drawn.map(svg => svg.props.alt)).toEqual(['V2 Ninja', 'Shadow clone: Review open pull requ…'])
   await during.unmount()
 
   await $.turn.complete({ ...DONE_TURN, agentId: 'agent-1' })
@@ -212,7 +212,7 @@ test('the pane opens at session start, /pet toggles it, and /pet <id> switches p
   expect(stored.get('isPaneClosed')).toBe(true)
 
   const listed = await $.command.run(typedPet('list'))
-  expect(listed.text).toContain('▸ 🥷 fat-ninja: Fat ninja (built in; no jumping, failed)')
+  expect(listed.text).toContain('▸ 🥷 v2-ninja: V2 Ninja (built in; no jumping, failed)')
   expect(listed.text).toContain('  🐾 robo: Robo (yours; no review, waving, jumping, failed; no hands or working clip)')
 
   const missing = await $.command.run(typedPet('nobody'))
