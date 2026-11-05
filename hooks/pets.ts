@@ -27,7 +27,7 @@ export const CLIP_FPS = 10
 const MS_PER_SECOND = 1_000
 export const FRAME_MS = MS_PER_SECOND / CLIP_FPS
 
-export const DEFAULT_PET = 'fat-ninja'
+export const DEFAULT_PET = 'v2-ninja'
 
 export const REACTIONS = ['review', 'waving', 'jumping', 'failed'] as const
 export type Reaction = (typeof REACTIONS)[number]
