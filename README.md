@@ -40,9 +40,24 @@ From a shell:
 claude plugin install desk-pets --marketplace V2-VanishsVault/desk-pets
 ```
 
+Those one-step forms need a recent Claude Code (2.1.275 or later in a session, 2.1.292 or later from a shell). On an older one, `--marketplace` is an unknown option: add the marketplace first, then install from it.
+
+```sh
+claude plugin marketplace add V2-VanishsVault/desk-pets
+claude plugin install desk-pets@vanish-vault
+```
+
 In the Claude desktop app, where `/plugin` doesn't run: click + next to the prompt box, then Plugins, Add marketplace with `V2-VanishsVault/desk-pets`, then Add plugin.
 
 Then type `/pet` to show the pane, and `/pet <id>` (such as `/pet rubber-duck`) to pick a pet. `/pet list` shows them all.
+
+To update to a new release, then restart Claude:
+
+```sh
+claude plugin update desk-pets@vanish-vault
+```
+
+Or turn on auto-update in `/plugin`, under Marketplaces, `vanish-vault`.
 
 ## Commands
 
