@@ -57,6 +57,8 @@ In the Claude desktop app, where `/plugin` doesn't run:
 4. Enter `V2-VanishsVault/desk-pets` and add it.
 5. Find **desk-pets** in Plugins and click its **+** to install it.
 
+[See these steps as a picture.](docs/desk-pets-install.png)
+
 Then type `/pet` to show the pane, and `/pet <id>` (such as `/pet rubber-duck`) to pick a pet. `/pet list` shows them all.
 
 To update to a new release, then restart Claude:
