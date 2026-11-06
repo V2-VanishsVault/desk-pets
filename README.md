@@ -1,5 +1,7 @@
 # Desk pets
 
+![The six desk pets animating: Clawde waves, V2 Ninja types, the grumpy wizard casts a spell, the rubber duck hops, the ginger cat cheers and the golden pup waves](docs/desk-pets.gif)
+
 An animated pet in a pane beside the Claude Code chat. It works while Claude works, reacts to what's going on, and calls in a helper for every subagent. It comes with six pets, Clawde by default, and you can make your own from any picture.
 
 | Pet | Id | Works by |
