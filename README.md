@@ -49,7 +49,13 @@ claude plugin marketplace add V2-VanishsVault/desk-pets
 claude plugin install desk-pets@vanish-vault
 ```
 
-In the Claude desktop app, where `/plugin` doesn't run: click + next to the prompt box, then Plugins, Add marketplace with `V2-VanishsVault/desk-pets`, then Add plugin.
+In the Claude desktop app, where `/plugin` doesn't run:
+
+1. Click the gear icon at the bottom left, then **Settings**.
+2. Pick **Customize**, then the **Plugins** tab.
+3. Click **+ Add** at the top right and choose **Add marketplace**.
+4. Enter `V2-VanishsVault/desk-pets` and add it.
+5. Find **desk-pets** in Plugins and click its **+** to install it.
 
 Then type `/pet` to show the pane, and `/pet <id>` (such as `/pet rubber-duck`) to pick a pet. `/pet list` shows them all.
 
